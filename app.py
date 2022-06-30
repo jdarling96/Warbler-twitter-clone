@@ -1,24 +1,29 @@
+from csv import unregister_dialect
+from distutils.log import error
 import os
+import pdb
 
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
-from forms import UserAddForm, LoginForm, MessageForm
+from forms import EditUserProfile, UserAddForm, LoginForm, MessageForm
 from models import db, connect_db, User, Message
-
+from pdb import set_trace as bp
+from sqlalchemy import or_
 CURR_USER_KEY = "curr_user"
 
 app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
+app.debug = True
 app.config['SQLALCHEMY_DATABASE_URI'] = (
     os.environ.get('DATABASE_URL', 'postgresql:///warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
-app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', "it's a secret")
 toolbar = DebugToolbarExtension(app)
 
@@ -35,6 +40,7 @@ def add_user_to_g():
 
     if CURR_USER_KEY in session:
         g.user = User.query.get(session[CURR_USER_KEY])
+        
 
     else:
         g.user = None
@@ -42,7 +48,7 @@ def add_user_to_g():
 
 def do_login(user):
     """Log in user."""
-
+    
     session[CURR_USER_KEY] = user.id
 
 
@@ -92,8 +98,10 @@ def signup():
 @app.route('/login', methods=["GET", "POST"])
 def login():
     """Handle user login."""
-
+    
     form = LoginForm()
+     
+    
 
     if form.validate_on_submit():
         user = User.authenticate(form.username.data,
@@ -113,6 +121,13 @@ def login():
 def logout():
     """Handle logout of user."""
 
+    do_logout()
+
+    flash('You have been logged out', 'success')
+    return redirect('/login')
+
+
+
     # IMPLEMENT THIS
 
 
@@ -124,6 +139,7 @@ def list_users():
     """Page with listing of users.
 
     Can take a 'q' param in querystring to search by that username.
+    if 'q' param is empty return all users else return user based on q = search
     """
 
     search = request.args.get('q')
@@ -210,6 +226,37 @@ def stop_following(follow_id):
 @app.route('/users/profile', methods=["GET", "POST"])
 def profile():
     """Update profile for current user."""
+    """ bp() """
+
+    user = User.query.get(g.user.id)
+    form = EditUserProfile(obj=user)
+    
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect('/')
+    
+    
+    if form.validate_on_submit():
+        
+        user = User.authenticate(user.username, form.password.data)
+        
+        if user:
+            user.username = form.username.data
+            user.email = form.email.data
+            user.bio = form.bio.data
+            user.image_url = form.image_url.data
+            user.header_image_url = form.header_image_url.data
+            
+            db.session.commit()
+            
+            flash('Account updated!', 'success')
+            return redirect(f'/users/{user.id}')
+        
+        flash('Incorrect password', 'danger') 
+        return redirect(f'/')   
+        
+    return render_template('/users/edit.html', form=form, user=user)
+
 
     # IMPLEMENT THIS
 
@@ -290,10 +337,17 @@ def homepage():
     - anon users: no messages
     - logged in: 100 most recent messages of followed_users
     """
-
+    """ bp()  """ 
+    
     if g.user:
+        users = [user.id for user in g.user.following]
+        for u in users:
+            new_user = u
+        
         messages = (Message
                     .query
+                    .join(Message.user)
+                    .filter((Message.user_id==g.user.id) | (Message.user_id.in_([user.id for user in g.user.following])))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
