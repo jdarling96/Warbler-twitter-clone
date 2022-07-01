@@ -340,9 +340,8 @@ def homepage():
     """ bp()  """ 
     
     if g.user:
-        users = [user.id for user in g.user.following]
-        for u in users:
-            new_user = u
+        user = User.query.get(g.user.id)
+        
         
         messages = (Message
                     .query
@@ -352,7 +351,7 @@ def homepage():
                     .limit(100)
                     .all())
 
-        return render_template('home.html', messages=messages)
+        return render_template('home.html', messages=messages, user=user)
 
     else:
         return render_template('home-anon.html')
