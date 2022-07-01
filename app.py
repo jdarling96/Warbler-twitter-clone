@@ -1,14 +1,16 @@
+from crypt import methods
 from csv import unregister_dialect
 from distutils.log import error
 import os
 import pdb
+from pyexpat.errors import messages
 
 from flask import Flask, render_template, request, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import EditUserProfile, UserAddForm, LoginForm, MessageForm
-from models import db, connect_db, User, Message
+from models import Likes, db, connect_db, User, Message
 from pdb import set_trace as bp
 from sqlalchemy import or_
 CURR_USER_KEY = "curr_user"
@@ -276,6 +278,48 @@ def delete_user():
 
     return redirect("/signup")
 
+@app.route('/users/<int:user_id>/likes', methods=["GET"])
+def show_messages_user_liked(user_id):
+    """Display messages that user has liked"""
+    
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    msg = [msg.id for msg in g.user.likes]
+    
+    show_msgs = Message.query.filter(Message.id.in_(msg)).all()
+    user = User.query.get(user_id)
+
+    return render_template('users/likes.html', show_msgs=show_msgs, user=user)
+
+
+
+@app.route('/users/add_like/<int:msg_id>', methods=["POST"])
+def like_users_message(msg_id):
+    """Toggle like button for messages on the Homepage"""
+    
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    liked_message = Message.query.get_or_404(msg_id)
+    if liked_message.user_id == g.user.id:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user_likes = g.user.likes
+
+    if liked_message in user_likes:
+        g.user.likes = [like for like in user_likes if like != liked_message]
+    else:
+        g.user.likes.append(liked_message)
+
+    db.session.commit()
+
+    return redirect("/")
+
+    
 
 ##############################################################################
 # Messages routes:
@@ -340,8 +384,6 @@ def homepage():
     """ bp()  """ 
     
     if g.user:
-        user = User.query.get(g.user.id)
-        
         
         messages = (Message
                     .query
@@ -351,7 +393,10 @@ def homepage():
                     .limit(100)
                     .all())
 
-        return render_template('home.html', messages=messages, user=user)
+
+        liked_msg_ids = [msg.id for msg in g.user.likes]
+        
+        return render_template('home.html', messages=messages, likes=liked_msg_ids)
 
     else:
         return render_template('home-anon.html')
