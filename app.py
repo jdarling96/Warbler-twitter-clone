@@ -286,18 +286,14 @@ def show_messages_user_liked(user_id):
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = [msg.id for msg in g.user.likes]
-    
-    show_msgs = Message.query.filter(Message.id.in_(msg)).all()
-    user = User.query.get(user_id)
-
-    return render_template('users/likes.html', show_msgs=show_msgs, user=user)
+    user = User.query.get_or_404(user_id)
+    return render_template('users/likes.html', user=user, likes=user.likes)
 
 
 
 @app.route('/users/add_like/<int:msg_id>', methods=["POST"])
 def like_users_message(msg_id):
-    """Toggle like button for messages on the Homepage"""
+    """Toggle a liked message for the currently-logged-in user. """
     
     if not g.user:
         flash("Access unauthorized.", "danger")

@@ -542,12 +542,13 @@ p.card-bio {
   flex: 1;
 }
 
+.message-link{
+  width: 90%;
+}
+
 #profile-header-img{
   max-height:100%;
   width:100%;
   object-fit: fill;
 }
 
-.blue-color {
-  color:lightblue;
-}
