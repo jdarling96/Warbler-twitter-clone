@@ -8,6 +8,7 @@
 import os
 from unittest import TestCase
 from sqlalchemy import exc
+from psycopg2 import errors
 
 from models import db, User, Message, Follows
 
@@ -163,11 +164,9 @@ class UserModelTestCase(TestCase):
         bad = User.signup(None, 'testagain@test.com', 'password', None)
         bad_id = 10000000
         bad.id = bad_id
-        db.session.commit()
-        
         with self.assertRaises(exc.IntegrityError) as context:
             db.session.commit()
-
+    
     def test_invalid_email_signup(self):
         invalid = User.signup("testtest", None, "password", None)
         uid = 123789
