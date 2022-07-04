@@ -8,7 +8,7 @@
 import os
 from unittest import TestCase
 from sqlalchemy import exc
-from psycopg2 import errors
+
 
 from models import db, User, Message, Follows
 
@@ -32,10 +32,12 @@ db.create_all()
 
 
 class UserModelTestCase(TestCase):
-    """Test views for messages."""
+    """Test model for users."""
 
     def setUp(self):
         """Create test client, add sample data."""
+        db.drop_all()
+        db.create_all()
 
         User.query.delete()
         Message.query.delete()
@@ -76,7 +78,9 @@ class UserModelTestCase(TestCase):
     
     def tearDown(self):
         """Clean up any fouled transaction."""
+        res = super().tearDown()
         db.session.rollback()
+        return res
             
 
     def test_user_model(self):
