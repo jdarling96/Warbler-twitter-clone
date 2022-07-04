@@ -354,12 +354,12 @@ def messages_show(message_id):
 @app.route('/messages/<int:message_id>/delete', methods=["POST"])
 def messages_destroy(message_id):
     """Delete a message."""
-
-    if not g.user:
+    msg = Message.query.get_or_404(message_id)
+    if not g.user or msg not in g.user.messages:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = Message.query.get(message_id)
+    
     db.session.delete(msg)
     db.session.commit()
 
@@ -398,6 +398,11 @@ def homepage():
         return render_template('home-anon.html')
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    """404 NOT FOUND page."""
+
+    return render_template('404.html'), 404
 ##############################################################################
 # Turn off all caching in Flask
 #   (useful for dev; in production, this kind of stuff is typically
