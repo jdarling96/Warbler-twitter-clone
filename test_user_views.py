@@ -189,7 +189,7 @@ class MessageViewTestCase(TestCase):
 
             self.assertIn("Access unauthorized", str(resp.data))
 
-            # The number of likes has not changed since making the request
+            
             self.assertEqual(like_count, Likes.query.count())
 
     def setup_followers(self):
